@@ -1,53 +1,29 @@
-package com.connor.sdk;
+package com.connor.sdk.test;
 
-import java.io.*;
+import com.alibaba.fastjson2.JSON;
+import com.connor.sdk.infrastructure.openai.dto.ChatCompletionSyncResponseDTO;
+import org.testng.annotations.Test;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.HttpURLConnection;
-import java.net.ProtocolException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Scanner;
 
-/**
- * @author Connor
- * @description
- * @create 2026/7/10 14:04
- */
-public class OpenAiCodeReview {
-
+public class ApiTest {
     static String token = "960792da84824b6aa1db76c6194fc655.BTyIcSmZtjYyFQlp";
 
-
-    public static void main(String[] args) throws Exception {
-        System.out.println("测试执行");
-
-        //1.代码检出
-        ProcessBuilder processBuilder = new ProcessBuilder("git","diff","HEAD~1","HEAD");
-
-        processBuilder.directory(new File("./"));
-
-        Process process = processBuilder.start();
-
-        BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-        String line;
-
-
-        StringBuilder diffCode = new StringBuilder();
-        while ((line = bufferedReader.readLine()) != null) {
-            diffCode.append(line);
-        }
-
-        int exitCode = process.waitFor();
-
-        System.out.println("exit with code: " + exitCode);
-
-        System.out.println("代码评审:" + diffCode.toString());
-
-
-        //2.chatgpt 代码评审
-        codeReview(diffCode.toString());
+    public static void main(String[] args) {
+        System.out.println(token);
     }
 
-
-    public static void codeReview(String diffCode) throws Exception {
+    @Test
+    public void test_http() throws IOException {
         URL url = new URL("https://open.bigmodel.cn/api/paas/v4/chat/completions");
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 
@@ -57,13 +33,14 @@ public class OpenAiCodeReview {
         connection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)");
         connection.setDoOutput(true);
 
+        String code = "1+1";
 
         String jsonInpuString = "{"
                 + "\"model\":\"glm-4.5-flash\","
                 + "\"messages\": ["
                 + "    {"
                 + "        \"role\": \"user\","
-                + "        \"content\": \"你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言请，请您根据git diff记录，对代码做出评审。代码为: " + diffCode + "\""
+                + "        \"content\": \"你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言请，请您根据git diff记录，对代码做出评审。代码为: " + code + "\""
                 + "    }"
                 + "]"
                 + "}";
@@ -73,7 +50,6 @@ public class OpenAiCodeReview {
             byte[] input = jsonInpuString.getBytes(StandardCharsets.UTF_8);
             os.write(input);
         }
-
 
         int responseCode = connection.getResponseCode();
         System.out.println(responseCode);
@@ -89,6 +65,14 @@ public class OpenAiCodeReview {
         in.close();
         connection.disconnect();
 
+
         System.out.println(content);
+
+//        ChatCompletionSyncResponseDTO response = JSON.parseObject(content.toString(), ChatCompletionSyncResponseDTO.class);
+//        System.out.println(response.getChoices().get(0).getMessage().getContent());
+
     }
+
+
+
 }
