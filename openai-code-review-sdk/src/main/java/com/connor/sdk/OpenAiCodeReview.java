@@ -1,6 +1,7 @@
 package com.connor.sdk;
 
 import com.alibaba.fastjson2.JSON;
+import com.connor.sdk.infrastructure.openai.dto.ChatCompletionRequestDTO;
 import com.connor.sdk.infrastructure.openai.dto.ChatCompletionSyncResponseDTO;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
@@ -11,6 +12,7 @@ import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 /**
@@ -74,19 +76,20 @@ public class OpenAiCodeReview {
         connection.setDoOutput(true);
 
 
-        String jsonInpuString = "{"
-                + "\"model\":\"glm-4.5-flash\","
-                + "\"messages\": ["
-                + "    {"
-                + "        \"role\": \"user\","
-                + "        \"content\": \"你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言请，请您根据git diff记录，对代码做出评审。代码为: " + diffCode + "\""
-                + "    }"
-                + "]"
-                + "}";
+        ChatCompletionRequestDTO request = new ChatCompletionRequestDTO();
+        request.setModel("glm-4.5-flash");
+        request.setMessages(List.of(
+                new ChatCompletionRequestDTO.Prompt(
+                        "user",
+                        "你是一个高级编程架构师，请根据 git diff 记录进行代码评审。"
+                ),
+                new ChatCompletionRequestDTO.Prompt("user", diffCode)
+        ));
+        String requestJson = JSON.toJSONString(request);
 
 
         try (OutputStream os = connection.getOutputStream()) {
-            byte[] input = jsonInpuString.getBytes(StandardCharsets.UTF_8);
+            byte[] input = requestJson.getBytes(StandardCharsets.UTF_8);
             os.write(input);
         }
 
@@ -94,16 +97,26 @@ public class OpenAiCodeReview {
         int responseCode = connection.getResponseCode();
         System.out.println(responseCode);
 
-        BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
-        String inputLine;
-
         StringBuilder content = new StringBuilder();
-        while ((inputLine = in.readLine()) != null) {
-            content.append(inputLine);
+        InputStream responseStream = responseCode >= 200 && responseCode < 300
+                ? connection.getInputStream()
+                : connection.getErrorStream();
+        if (responseStream != null) {
+            try (BufferedReader in = new BufferedReader(
+                    new InputStreamReader(responseStream, StandardCharsets.UTF_8))) {
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    content.append(inputLine);
+                }
+            }
         }
-
-        in.close();
         connection.disconnect();
+
+        if (responseCode < 200 || responseCode >= 300) {
+            throw new IllegalStateException(
+                    "模型接口调用失败，HTTP " + responseCode + "：" + content
+            );
+        }
 
         System.out.println("评审结果：" + content.toString());
 
