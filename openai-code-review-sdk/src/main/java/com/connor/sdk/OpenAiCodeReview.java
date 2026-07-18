@@ -81,8 +81,8 @@ public class OpenAiCodeReview {
         request.setModel("glm-4.5-flash");
         request.setMessages(List.of(
                 new ChatCompletionRequestDTO.Prompt(
-                        "user",
-                        "你是一个高级编程架构师，请根据 git diff 记录进行代码评审。"
+                        "system",
+                        "你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言，请根据 git diff 记录进行代码评审。"
                 ),
                 new ChatCompletionRequestDTO.Prompt("user", diffCode)
         ));
