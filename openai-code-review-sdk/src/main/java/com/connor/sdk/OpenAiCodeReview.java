@@ -58,6 +58,7 @@ public class OpenAiCodeReview {
 
         //2.chatgpt 代码评审
         String log = codeReview(diffCode.toString());
+        System.out.println("评审结果:" + log);
 
         //3.写入日志
         String logUrl = writeLog(token, log);
@@ -118,7 +119,7 @@ public class OpenAiCodeReview {
             );
         }
 
-        System.out.println("评审结果：" + content.toString());
+//        System.out.println("评审结果：" + content.toString());
 
         ChatCompletionSyncResponseDTO response = JSON.parseObject(
                 content.toString(),
