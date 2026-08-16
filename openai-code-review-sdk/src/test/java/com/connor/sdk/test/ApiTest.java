@@ -1,7 +1,5 @@
 package com.connor.sdk.test;
 
-import com.alibaba.fastjson2.JSON;
-import com.connor.sdk.infrastructure.openai.dto.ChatCompletionSyncResponseDTO;
 import org.testng.annotations.Test;
 
 import java.io.BufferedReader;
@@ -11,9 +9,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Scanner;
 
 public class ApiTest {
     static String token = "960792da84824b6aa1db76c6194fc655.BTyIcSmZtjYyFQlp";

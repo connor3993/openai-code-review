@@ -1,0 +1,10 @@
+serverAddr = "39.102.79.179"
+serverPort = 443
+
+[[proxies]]
+name = "spring-boot"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 8080
+remotePort = 28080
+

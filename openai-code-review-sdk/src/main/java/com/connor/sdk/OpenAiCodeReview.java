@@ -1,8 +1,10 @@
 package com.connor.sdk;
 
 import com.alibaba.fastjson2.JSON;
-import com.connor.sdk.infrastructure.openai.dto.ChatCompletionRequestDTO;
-import com.connor.sdk.infrastructure.openai.dto.ChatCompletionSyncResponseDTO;
+import com.connor.sdk.infrastructure.zhipu.client.ZhipuClient;
+import com.connor.sdk.infrastructure.zhipu.dto.ChatCompletionRequest;
+import com.connor.sdk.infrastructure.zhipu.dto.ChatCompletionResponse;
+import com.connor.sdk.infrastructure.zhipu.dto.ChatMessage;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
@@ -63,68 +65,34 @@ public class OpenAiCodeReview {
         //3.写入日志
         String logUrl = writeLog(token, log);
         System.out.println("评审日志地址：" + logUrl);
+
+        //4.推送到微信消息
     }
 
 
     public static String codeReview(String diffCode) throws Exception {
-        URL url = new URL("https://open.bigmodel.cn/api/paas/v4/chat/completions");
-        HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+        //初始化zhipu client
+        ZhipuClient client = ZhipuClient.builder().apiKey("4bb9d364548246a4b9fe292292dc532e.dCTeVFnDop5aK7Pb").build();
 
-        connection.setRequestMethod("POST");
-        connection.setRequestProperty("Authorization", "Bearer " + token);
-        connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("User-Agent", "Mozilla/4.0 (compatible; MSIE 5.0; Windows NT; DigExt)");
-        connection.setDoOutput(true);
-
-
-        ChatCompletionRequestDTO request = new ChatCompletionRequestDTO();
-        request.setModel("glm-4.5-flash");
-        request.setMessages(List.of(
-                new ChatCompletionRequestDTO.Prompt(
-                        "system",
-                        "你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言，请根据 git diff 记录进行代码评审。"
-                ),
-                new ChatCompletionRequestDTO.Prompt("user", diffCode)
-        ));
-        String requestJson = JSON.toJSONString(request);
-
-
-        try (OutputStream os = connection.getOutputStream()) {
-            byte[] input = requestJson.getBytes(StandardCharsets.UTF_8);
-            os.write(input);
-        }
-
-
-        int responseCode = connection.getResponseCode();
-        System.out.println(responseCode);
-
-        StringBuilder content = new StringBuilder();
-        InputStream responseStream = responseCode >= 200 && responseCode < 300
-                ? connection.getInputStream()
-                : connection.getErrorStream();
-        if (responseStream != null) {
-            try (BufferedReader in = new BufferedReader(
-                    new InputStreamReader(responseStream, StandardCharsets.UTF_8))) {
-                String inputLine;
-                while ((inputLine = in.readLine()) != null) {
-                    content.append(inputLine);
-                }
-            }
-        }
-        connection.disconnect();
-
-        if (responseCode < 200 || responseCode >= 300) {
-            throw new IllegalStateException(
-                    "模型接口调用失败，HTTP " + responseCode + "：" + content
-            );
-        }
-
-//        System.out.println("评审结果：" + content.toString());
-
-        ChatCompletionSyncResponseDTO response = JSON.parseObject(
-                content.toString(),
-                ChatCompletionSyncResponseDTO.class
+        //构建message list,传入diffcode
+        List<ChatMessage> messages = List.of(
+                ChatMessage.builder()
+                        .role("user")
+                        .content("你是一个高级编程架构师，精通各类场景方案、架构设计和编程语言请，请您根据git diff记录，对代码做出评审。代码为:" + diffCode)
+                        .build()
         );
+        //配置client
+        ChatCompletionRequest request = ChatCompletionRequest.builder()
+                .model("glm-4.7-flash")
+                .messages(messages)
+                .thinking(new ChatCompletionRequest.Thinking("disabled"))
+                .maxTokens(65536)
+                .temperature(1.0f)
+                .build();
+
+        //发送chat请求
+        ChatCompletionResponse response = client.chat(request);
+        //处理结果
         return response.getChoices().get(0).getMessage().getContent();
     }
 
