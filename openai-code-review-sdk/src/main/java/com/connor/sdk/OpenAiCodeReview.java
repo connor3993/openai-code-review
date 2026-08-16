@@ -1,10 +1,12 @@
 package com.connor.sdk;
 
 import com.alibaba.fastjson2.JSON;
+import com.connor.sdk.domian.Message;
 import com.connor.sdk.infrastructure.zhipu.client.ZhipuClient;
 import com.connor.sdk.infrastructure.zhipu.dto.ChatCompletionRequest;
 import com.connor.sdk.infrastructure.zhipu.dto.ChatCompletionResponse;
 import com.connor.sdk.infrastructure.zhipu.dto.ChatMessage;
+import com.connor.sdk.utils.WXAccessTokenUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
 
@@ -16,6 +18,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
+import java.util.Scanner;
 
 /**
  * @author Connor
@@ -67,6 +70,20 @@ public class OpenAiCodeReview {
         System.out.println("评审日志地址：" + logUrl);
 
         //4.推送到微信消息
+    }
+
+    private static void pushMessage(String logUrl) {
+        String accessToken = WXAccessTokenUtils.getAccessToken();
+        System.out.println(accessToken);
+
+        Message message = new Message();
+        message.put("project", "code-review");
+        message.put("review", logUrl);
+        message.setUrl(logUrl);
+        message.setTemplate_id("PeoMZesdC2KZfWtPT-eEOOz1f7a7XMCNKUifRJMH8c4");
+
+        String url = String.format("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token=%s", accessToken);
+        sendPostRequest(url, JSON.toJSONString(message));
     }
 
 
@@ -134,4 +151,30 @@ public class OpenAiCodeReview {
             }
             return sb.toString();
         }
+
+
+    private static void sendPostRequest(String urlString, String jsonBody) {
+        try {
+            URL url = new URL(urlString);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json; utf-8");
+            conn.setRequestProperty("Accept", "application/json");
+            conn.setDoOutput(true);
+
+            try (OutputStream os = conn.getOutputStream()) {
+                byte[] input = jsonBody.getBytes(StandardCharsets.UTF_8);
+                os.write(input, 0, input.length);
+            }
+
+            try (Scanner scanner = new Scanner(conn.getInputStream(), StandardCharsets.UTF_8.name())) {
+                String response = scanner.useDelimiter("\\A").next();
+                System.out.println(response);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+
 }
